@@ -1,0 +1,62 @@
+node('node 1')
+{
+  echo "GitHub BranhName ${env.BRANCH_NAME}"
+  echo "Jenkins Job Number ${env.BUILD_NUMBER}"
+  echo "Jenkins Node Name ${env.NODE_NAME}"
+  
+  echo "Jenkins Home ${env.JENKINS_HOME}"
+  echo "Jenkins URL ${env.JENKINS_URL}"
+  echo "JOB Name ${env.JOB_NAME}"
+  
+  properties([
+    buildDiscarder(logRotator(numToKeepStr: '3')),
+    pipelineTriggers([
+        pollSCM('* * * * *')
+    ])
+  ])
+
+
+
+
+  def mavenHome = tool name: "maven"
+  
+  stage('Checkout Code')
+  {
+    git branch: 'development', credentialsId: 'a7784abc-0047-4b33-9521-28937ec5a878', url: 'https://github.com/SamyakJena/maven-web-application.git'
+  }
+  
+  stage('Build')
+  {  
+    sh "${mavenHome}/bin/mvn clean package"
+  }
+  
+  /*
+  
+  stage('SonarQube Report')
+  {  
+    sh "${mavenHome}/bin/mvn sonar:sonar"
+  }
+  
+  stage('Upload Artifacts into Nexus')
+  {  
+    sh "${mavenHome}/bin/mvn deploy"
+  }
+ 
+ */
+  stage('Delpoy App into Tomcat')
+  {
+     sshagent(['ba74bcea-3bdc-4803-a89d-9d6bde16c81c'])
+	 {
+	    sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war ec2-user@13.233.127.254:/opt/apache-tomcat-9.0.31/webapps/"
+	 }
+  }
+  
+  stage('Email Notification')
+  {
+    emailext body: '''Build is Successful!!!
+
+   Regards,
+   Samyak.''', subject: 'Build is Successful!!!', to: 'samyakjena86@gmail.com'
+ }
+ 
+}
